@@ -1,0 +1,30 @@
+experiment_name: "tdmpc_experiment"
+
+# Environment settings
+env_id: "f110_gym:f110-v0"
+map_path: "maps/levine.yaml"
+n_envs: 1
+max_episode_steps: 1000
+domain_randomization: false
+sensor_noise:
+  lidar: 0.0
+  speed: 0.0
+
+lidar:
+  enabled: true
+  downsample: false
+include_velocity_in_obs: true
+
+# Algorithm
+algorithm: "tdmpc"
+model_type: "basic"
+total_timesteps: 50000
+learning_rate: 0.0003
+gamma: 0.99
+batch_size: 256
+buffer_size: 100000
+horizon: 5
+planning_iters: 100
+random_steps: 1000
+save_interval: 10000
+seed: 42

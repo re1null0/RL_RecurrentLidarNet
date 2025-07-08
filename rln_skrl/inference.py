@@ -39,6 +39,9 @@ def build_model(config, obs_space, act_space, device):
     if algorithm == "dqn":
         # Dueling Transformer for DQN
         model = DuelingTransformerNet(obs_dim, action_dim)
+    elif algorithm == "tdmpc":
+        from tdmpc.tdmpc_agent import PolicyModel
+        model = PolicyModel(obs_dim, action_dim, act_space.low, act_space.high)
     elif algorithm == "ppo":
         if model_type == "basic_lstm":
             model = BasicLSTMNet(obs_dim, action_dim)
@@ -62,11 +65,14 @@ def main():
     # Find latest experiment and config
     latest_exp = find_latest_experiment()
     config_path = os.path.join(latest_exp, "config.yaml")
-    checkpoint_dir = os.path.join(latest_exp, "f1tenth_experiment", "checkpoints")
-    best_ckpt_path = find_best_checkpoint(checkpoint_dir)
-
-    # Load config and environment
     config = load_config(config_path)
+    if config["algorithm"].lower() == "tdmpc":
+        best_ckpt_path = os.path.join(latest_exp, "tdmpc_model.pth")
+    else:
+        checkpoint_dir = os.path.join(latest_exp, "f1tenth_experiment", "checkpoints")
+        best_ckpt_path = find_best_checkpoint(checkpoint_dir)
+
+    # Load environment
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     env = F110EnvWrapper(config)
     obs, _ = env.reset()
@@ -94,12 +100,15 @@ def main():
     while not (done or truncated):
         obs_tensor = torch.tensor(obs, dtype=torch.float32, device=device).unsqueeze(0)
         with torch.no_grad():
-            if config["algorithm"].lower() == "dqn":
+            algo = config["algorithm"].lower()
+            if algo == "dqn":
                 q_values = model(obs_tensor)
                 if hasattr(env, "discrete_actions") and env.discrete_actions is not None:
                     action = int(torch.argmax(q_values, dim=1).item())
                 else:
                     action = q_values.cpu().numpy()[0]
+            elif algo == "tdmpc":
+                action = model(obs_tensor).cpu().numpy()[0]
             else:  # PPO
                 action_mean, _ = model(obs_tensor)
                 if isinstance(env.action_space, type(env.env.action_space)) and hasattr(env, "discrete_actions") and env.discrete_actions is not None:
@@ -116,5 +125,4 @@ def main():
 
     print(f"Episode finished in {step} steps. Total reward: {total_reward:.2f}")
 
-if __name__ == "__main__":
-    main()
+if __name__ == "__main__":    main()

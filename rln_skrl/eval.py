@@ -6,6 +6,7 @@ import torch
 import gymnasium as gym
 from gym_interface import make_vector_env
 from models import BasicLSTMNet, SpatioTemporalRLNNet, TransformerNet, DuelingTransformerNet
+from tdmpc.tdmpc_agent import PolicyModel
 
 # Load config and model from specified results directory
 if len(sys.argv) < 2:
@@ -41,6 +42,9 @@ if algo == "dqn":
     # Use dueling transformer for DQN
     num_actions = act_space.n
     model = DuelingTransformerNet(obs_dim, num_actions)
+elif algo == "tdmpc":
+    action_dim = act_space.shape[0]
+    model = PolicyModel(obs_dim, action_dim, act_space.low, act_space.high)
 else:
     #action_dim = act_space.shape[0] if isinstance(act_space, type(env.envs[0].action_space)) and hasattr(act_space, 'shape') else act_space.n
     action_dim = act_space.shape[0] if isinstance(act_space, gym.spaces.Box) else act_space.n
@@ -60,7 +64,11 @@ model_file = model_path
 # If DQN and no model_final, try q_net_final
 if algo == "dqn" and not os.path.exists(model_path):
     model_file = f"{results_dir}/q_net_final.pth"
-model.load_state_dict(torch.load(model_file, map_location=device))
+if algo == "tdmpc":
+    checkpoint = torch.load(f"{results_dir}/tdmpc_model.pth", map_location=device)
+    model.load_state_dict(checkpoint["policy"])
+else:
+    model.load_state_dict(torch.load(model_file, map_location=device))
 model.to(device)
 model.eval()
 
@@ -83,6 +91,8 @@ for ep in range(num_eval_episodes):
             # Greedy action from Q-network
             q_values = model(obs_tensor)
             action = int(torch.argmax(q_values, dim=1).cpu().numpy()[0])
+        elif algo == "tdmpc":
+            action = model(obs_tensor).cpu().numpy()[0]
         else:
             if isinstance(model, BasicLSTMNet) or isinstance(model, SpatioTemporalRLNNet):
                 # Single-step forward for LSTM

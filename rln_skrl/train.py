@@ -295,6 +295,12 @@ elif algorithm == "muesli":
 
     agent.train()
 
+elif algorithm == "tdmpc":
+    from tdmpc.tdmpc_agent import TDMPCAgent
+    config["results_dir"] = results_dir
+    agent = TDMPCAgent(env=env, config=config, device=device)
+    agent.train()
+
 
 else:
     raise ValueError(f"Unknown algorithm: {config['algorithm']}")
