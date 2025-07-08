@@ -54,6 +54,9 @@ def build_model(config, obs_space, act_space, device):
             model = SpatioTempDuelingTransformerNet(seq_len, num_ranges, action_dim)
         else:
             model = BasicLSTMNet(obs_dim, action_dim)
+    elif algorithm == "tdmpc":
+        from tdmpc.tdmpc_agent import LatentDynamicsModel
+        model = LatentDynamicsModel(obs_dim, action_dim)
     else:
         raise ValueError(f"Unknown algorithm: {algorithm}")
     return model.to(device)
@@ -63,7 +66,10 @@ def main():
     latest_exp = find_latest_experiment()
     config_path = os.path.join(latest_exp, "config.yaml")
     checkpoint_dir = os.path.join(latest_exp, "f1tenth_experiment", "checkpoints")
-    best_ckpt_path = find_best_checkpoint(checkpoint_dir)
+    if os.path.isdir(checkpoint_dir):
+        best_ckpt_path = find_best_checkpoint(checkpoint_dir)
+    else:
+        best_ckpt_path = os.path.join(latest_exp, "tdmpc_final_model.pth")
 
     # Load config and environment
     config = load_config(config_path)

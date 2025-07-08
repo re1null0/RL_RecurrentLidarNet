@@ -295,6 +295,11 @@ elif algorithm == "muesli":
 
     agent.train()
 
+elif algorithm == "tdmpc":
+    from tdmpc.tdmpc_agent import TDMPCAgent
+
+    agent = TDMPCAgent(env=env, config=config, device=device, results_dir=results_dir)
+    agent.train()
 
 else:
     raise ValueError(f"Unknown algorithm: {config['algorithm']}")
@@ -308,7 +313,7 @@ trainer = None
 if algorithm in ["dqn", "ppo"]:
     trainer = SequentialTrainer(env=env, agents=agent, cfg=cfg_trainer)
     trainer.train()
-elif algorithm == "muesli":
+elif algorithm in ["muesli", "tdmpc"]:
     agent.train()
 
 # trainer = SequentialTrainer(env=env, agents=agent, cfg=cfg_trainer)

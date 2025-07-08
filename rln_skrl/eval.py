@@ -44,7 +44,10 @@ if algo == "dqn":
 else:
     #action_dim = act_space.shape[0] if isinstance(act_space, type(env.envs[0].action_space)) and hasattr(act_space, 'shape') else act_space.n
     action_dim = act_space.shape[0] if isinstance(act_space, gym.spaces.Box) else act_space.n
-    if model_type == "basic_lstm":
+    if algo == "tdmpc":
+        from tdmpc.tdmpc_agent import LatentDynamicsModel
+        model = LatentDynamicsModel(obs_dim, action_dim)
+    elif model_type == "basic_lstm":
         model = BasicLSTMNet(obs_dim, action_dim)
     elif model_type == "spatiotemporal_rln":
         model = SpatioTemporalRLNNet(obs_dim, action_dim)
@@ -60,6 +63,8 @@ model_file = model_path
 # If DQN and no model_final, try q_net_final
 if algo == "dqn" and not os.path.exists(model_path):
     model_file = f"{results_dir}/q_net_final.pth"
+elif algo == "tdmpc":
+    model_file = f"{results_dir}/tdmpc_final_model.pth"
 model.load_state_dict(torch.load(model_file, map_location=device))
 model.to(device)
 model.eval()
