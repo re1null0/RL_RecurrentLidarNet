@@ -1,9 +1,9 @@
 import os
 import gymnasium as gym
 import numpy as np
+import torch
 from gymnasium.vector import AsyncVectorEnv, SyncVectorEnv
 from gymnasium.wrappers import RecordEpisodeStatistics
-from skrl.envs.wrappers.torch import wrap_env
 
 # Custom environment wrapper for F1TENTH gym to handle observation processing, noise, and reward shaping.
 class F110EnvWrapper(gym.Env):
@@ -248,19 +248,21 @@ class F110EnvWrapper(gym.Env):
 def make_vector_env(config):
     """Create a vectorized environment with the specified number of parallel F1TENTH environments."""
     num_envs = config.get("n_envs", 1)
-    use_subproc = (num_envs > 1 and os.name != 'nt')  # use subprocesses for parallel envs if not on Windows
+    use_subproc = num_envs > 1 and os.name != "nt"
+
     def make_env_fn(rank):
         def _init():
             env = F110EnvWrapper(config, seed=config.get("seed", 0) + rank)
-            # Wrap each env to record episode statistics (returns and lengths)
             return RecordEpisodeStatistics(env)
         return _init
+
     if num_envs == 1:
-        env = F110EnvWrapper(config, seed=config.get("seed", 0))
-        #env = RecordEpisodeStatistics(env)
-        env = wrap_env(env)  # wrap single environment for skrl
+        env = make_env_fn(0)()
     else:
         env_fns = [make_env_fn(i) for i in range(num_envs)]
-        env = AsyncVectorEnv(env_fns) if use_subproc else SyncVectorEnv(env_fns)
-        env = wrap_env(env)
+        env_cls = AsyncVectorEnv if use_subproc else SyncVectorEnv
+        env = env_cls(env_fns)
+
+    env.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    env.num_envs = num_envs
     return env
